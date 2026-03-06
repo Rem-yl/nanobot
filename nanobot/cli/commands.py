@@ -160,7 +160,7 @@ def onboard():
     from nanobot.config.schema import Config
     from nanobot.utils.helpers import get_workspace_path
     
-    config_path = get_config_path()
+    config_path = get_config_path() # ~/.nanobot/config.json 
     
     if config_path.exists():
         console.print(f"[yellow]Config already exists at {config_path}[/yellow]")
@@ -230,7 +230,48 @@ def _create_workspace_templates(workspace: Path):
 
 
 def _make_provider(config: Config):
-    """Create the appropriate LLM provider from config."""
+    """
+    Create the appropriate LLM provider instance based on configuration.
+
+    This factory function selects and instantiates one of three provider types
+    based on the configured model and provider settings. It serves as the central
+    point for provider creation in the CLI.
+
+    Args:
+        config: Configuration object containing model and provider settings,
+            including API keys, base URLs, and provider-specific options.
+
+    Returns:
+        LLMProvider: An instance of one of the following provider classes:
+            - OpenAICodexProvider: For OAuth-authenticated OpenAI Codex models
+            - CustomProvider: For direct OpenAI-compatible endpoints
+            - LiteLLMProvider: For most providers via unified LiteLLM gateway
+
+    Provider Selection Logic:
+        - **OpenAI Codex**: Selected when provider_name is "openai_codex" or
+          model starts with "openai-codex/". Uses OAuth authentication, no API
+          key required.
+
+        - **Custom**: Selected when provider_name is "custom". Connects directly
+          to OpenAI-compatible endpoints, bypassing LiteLLM. Useful for local
+          servers or custom implementations.
+
+        - **LiteLLM** (default): Used for most providers including Anthropic,
+          OpenAI, DeepSeek, Gemini, and others. Routes requests through the
+          LiteLLM unified gateway for consistent API handling.
+
+    Raises:
+        typer.Exit: Exits with code 1 if a non-OAuth, non-Bedrock provider
+            requires an API key but none is configured. Displays error message
+            to console with configuration instructions.
+
+    Example:
+        >>> config = Config(...)
+        >>> provider = _make_provider(config)
+        >>> # Returns OpenAICodexProvider if model is "openai-codex/gpt-4"
+        >>> # Returns CustomProvider if provider_name is "custom"
+        >>> # Returns LiteLLMProvider for "anthropic/claude-3-5-sonnet"
+    """
     from nanobot.providers.litellm_provider import LiteLLMProvider
     from nanobot.providers.openai_codex_provider import OpenAICodexProvider
     from nanobot.providers.custom_provider import CustomProvider
