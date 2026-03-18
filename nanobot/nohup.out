@@ -1,0 +1,4 @@
+Forwarding from 127.0.0.1:2222 -> 22
+Forwarding from [::1]:2222 -> 22
+Handling connection for 2222
+error: lost connection to pod
