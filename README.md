@@ -66,6 +66,15 @@
   <img src="nanobot_arch.png" alt="nanobot architecture" width="800">
 </p>
 
+📖 **[Read the complete architecture documentation →](./docs/architecture/)**
+
+Deep dive into nanobot's internals:
+- [Architecture Overview](./docs/architecture/00-overview.md) - System design and core concepts
+- [Core Components](./docs/architecture/01-core-components/) - AgentLoop, MessageBus, Providers, Channels
+- [Advanced Features](./docs/architecture/02-advanced-features/) - Subagents, Memory, Skills, Sessions
+- [Extension Guide](./docs/architecture/04-extension-guide/) - How to add Tools, Skills, Channels, Providers
+- [Reference](./docs/architecture/05-reference/) - File index, data flow diagrams, class diagrams
+
 ## ✨ Features
 
 <table align="center">

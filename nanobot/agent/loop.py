@@ -61,25 +61,44 @@ class AgentLoop:
         mcp_servers: dict | None = None,
         channels_config: ChannelsConfig | None = None,
     ):
-        from nanobot.config.schema import ExecToolConfig
-        self.bus = bus
-        self.channels_config = channels_config
-        self.provider = provider
-        self.workspace = workspace
-        self.model = model or provider.get_default_model()
-        self.max_iterations = max_iterations
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        self.memory_window = memory_window
-        self.brave_api_key = brave_api_key
-        self.exec_config = exec_config or ExecToolConfig()
-        self.cron_service = cron_service
-        self.restrict_to_workspace = restrict_to_workspace
+        """Initialize the agent loop engine.
 
-        self.context = ContextBuilder(workspace)
-        self.sessions = session_manager or SessionManager(workspace)
-        self.tools = ToolRegistry()
-        self.subagents = SubagentManager(
+        Args:
+            bus: Message bus for receiving inbound messages and publishing outbound responses
+            provider: LLM provider instance (OpenAI, Anthropic, etc.) for model inference
+            workspace: Root directory path for file operations and session storage
+            model: Model identifier to use (defaults to provider's default model if None)
+            max_iterations: Maximum number of LLM-tool iterations per message (prevents infinite loops)
+            temperature: LLM sampling temperature (0.0-1.0), lower = more deterministic
+            max_tokens: Maximum tokens to generate per LLM response
+            memory_window: Number of recent history messages to include in context
+            brave_api_key: API key for Brave web search tool (optional)
+            exec_config: Configuration for shell command execution (timeout, restrictions)
+            cron_service: Optional cron service instance for scheduled task management
+            restrict_to_workspace: If True, file/exec tools can only access workspace directory
+            session_manager: Custom session manager (creates default if None)
+            mcp_servers: Dictionary of MCP server configurations for external tool integration
+            channels_config: Channel-specific configuration (routing, permissions, etc.)
+        """
+        from nanobot.config.schema import ExecToolConfig
+        self.bus = bus  # 消息总线，用于跨模块通信
+        self.channels_config = channels_config  # 频道配置，定义各频道的路由和权限规则
+        self.provider = provider  # LLM 提供者，负责调用底层语言模型
+        self.workspace = workspace  # 工作空间根目录，所有文件操作的基准路径
+        self.model = model or provider.get_default_model()  # 实际使用的模型名称
+        self.max_iterations = max_iterations  # 单次对话的最大工具调用迭代次数
+        self.temperature = temperature  # 控制生成文本的随机性
+        self.max_tokens = max_tokens  # 限制单次生成的最大长度
+        self.memory_window = memory_window  # 滑动窗口大小，控制上下文中保留多少历史消息
+        self.brave_api_key = brave_api_key  # Brave 搜索 API 凭证
+        self.exec_config = exec_config or ExecToolConfig()  # Shell 执行配置，包含超时等安全参数
+        self.cron_service = cron_service  # 定时任务服务，支持周期性任务调度
+        self.restrict_to_workspace = restrict_to_workspace  # 沙箱模式开关，限制文件和命令访问范围
+
+        self.context = ContextBuilder(workspace)  # 上下文构建器，组装 LLM 提示词（系统消息、历史、当前输入）
+        self.sessions = session_manager or SessionManager(workspace)  # 会话管理器，持久化每个频道/聊天的对话历史
+        self.tools = ToolRegistry()  # 工具注册表，存储所有可用工具的定义和执行器
+        self.subagents = SubagentManager(  # 子 Agent 管理器，支持并行处理独立任务
             provider=provider,
             workspace=workspace,
             bus=bus,
@@ -91,15 +110,15 @@ class AgentLoop:
             restrict_to_workspace=restrict_to_workspace,
         )
 
-        self._running = False
-        self._mcp_servers = mcp_servers or {}
-        self._mcp_stack: AsyncExitStack | None = None
-        self._mcp_connected = False
-        self._mcp_connecting = False
-        self._consolidating: set[str] = set()  # Session keys with consolidation in progress
-        self._consolidation_tasks: set[asyncio.Task] = set()  # Strong refs to in-flight tasks
-        self._consolidation_locks: dict[str, asyncio.Lock] = {}
-        self._register_default_tools()
+        self._running = False  # 运行状态标志，控制主循环的生命周期
+        self._mcp_servers = mcp_servers or {}  # MCP 服务器配置字典，存储外部工具集成信息
+        self._mcp_stack: AsyncExitStack | None = None  # 异步上下文管理器，管理 MCP 连接的生命周期
+        self._mcp_connected = False  # MCP 连接状态标志，表示是否已成功连接
+        self._mcp_connecting = False  # MCP 连接中标志，防止重复连接
+        self._consolidating: set[str] = set()  # 正在进行记忆整合的会话键集合
+        self._consolidation_tasks: set[asyncio.Task] = set()  # 记忆整合任务的强引用集合，防止 GC 回收
+        self._consolidation_locks: dict[str, asyncio.Lock] = {}  # 每个会话的整合锁，防止并发整合冲突
+        self._register_default_tools()  # 注册默认工具集（文件、Shell、Web 等）
 
     def _register_default_tools(self) -> None:
         """Register the default set of tools."""

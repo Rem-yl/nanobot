@@ -453,7 +453,7 @@ def agent(
 
     # Create cron service for tool usage (no callback needed for CLI unless running)
     cron_store_path = get_data_dir() / "cron" / "jobs.json"
-    cron = CronService(cron_store_path)
+    cron = CronService(cron_store_path) # 初始化任务调度服务
 
     if logs:
         logger.enable("nanobot")

@@ -67,7 +67,22 @@ class CronService:
         store_path: Path,
         on_job: Callable[[CronJob], Coroutine[Any, Any, str | None]] | None = None
     ):
-        self.store_path = store_path
+        """Initialize the cron service.
+
+        Args:
+            store_path: Path to the JSON file for persisting job configurations and state
+                       (typically ~/.nanobot/cron/jobs.json)
+            on_job: Optional async callback function executed when a job runs. Receives the
+                   CronJob instance and returns an optional response string.
+
+        Instance Variables:
+            self.store_path: Path to the jobs.json file for persistence
+            self.on_job: Callback function invoked by _execute_job() to perform actual work
+            self._store: In-memory cache of all jobs, loaded from disk on first access
+            self._timer_task: Current asyncio task waiting for the next job to run
+            self._running: Boolean flag indicating if the service is active
+        """
+        self.store_path = store_path    # ~/.nanobot/cron/jobs.json
         self.on_job = on_job  # Callback to execute job, returns response text
         self._store: CronStore | None = None
         self._timer_task: asyncio.Task | None = None
