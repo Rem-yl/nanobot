@@ -48,13 +48,13 @@ class ContextBuilder:
             parts.append(bootstrap)
         
         # Memory context
-        memory = self.memory.get_memory_context()
+        memory = self.memory.get_memory_context()   # 加载 memory.md
         if memory:
             parts.append(f"# Memory\n\n{memory}")
         
         # Skills - progressive loading
         # 1. Always-loaded skills: include full content
-        always_skills = self.skills.get_always_skills()
+        always_skills = self.skills.get_always_skills() # 加载 /Users/yule/.nanobot/workspace/skills 和 /Users/yule/workspace/nanobot/nanobot/skills 中的skills
         if always_skills:
             always_content = self.skills.load_skills_for_context(always_skills)
             if always_content:
@@ -72,6 +72,7 @@ Skills with available="false" need dependencies installed first - you can try in
         
         return "\n\n---\n\n".join(parts)
     
+    # todo: 可以更改系统的提示词, 更加符合自己的身份
     def _get_identity(self) -> str:
         """Get the core identity section."""
         workspace_path = str(self.workspace.expanduser().resolve())
@@ -124,7 +125,7 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
     def _load_bootstrap_files(self) -> str:
         """Load all bootstrap files from workspace."""
         parts = []
-        
+        # todo: 这里能不能根据不同的文件更加针对性的写提示词?
         for filename in self.BOOTSTRAP_FILES:
             file_path = self.workspace / filename
             if file_path.exists():

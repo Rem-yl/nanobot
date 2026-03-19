@@ -347,6 +347,8 @@ class AgentLoop:
         # Slash commands
         cmd = msg.content.strip().lower()
         if cmd == "/new":
+            # /new 命令 = 安全归档 + 清空会话
+            # 当前对话 → 提取摘要 → 写入 MEMORY.md/HISTORY.md → 归档原始消息 → 清空会话 → 返回确认
             lock = self._get_consolidation_lock(session.key)
             self._consolidating.add(session.key)
             try:
@@ -380,6 +382,7 @@ class AgentLoop:
                                   content="🐈 nanobot commands:\n/new — Start a new conversation\n/help — Show available commands")
 
         unconsolidated = len(session.messages) - session.last_consolidated
+        # 当session 未整合的消息达到上限时触发自动整合
         if (unconsolidated >= self.memory_window and session.key not in self._consolidating):
             self._consolidating.add(session.key)
             lock = self._get_consolidation_lock(session.key)
@@ -387,6 +390,7 @@ class AgentLoop:
             async def _consolidate_and_unlock():
                 try:
                     async with lock:
+                        # review: 搞明白nanobot的记忆机制
                         await self._consolidate_memory(session)
                 finally:
                     self._consolidating.discard(session.key)
@@ -401,9 +405,9 @@ class AgentLoop:
         self._set_tool_context(msg.channel, msg.chat_id, msg.metadata.get("message_id"))
         if message_tool := self.tools.get("message"):
             if isinstance(message_tool, MessageTool):
-                message_tool.start_turn()
+                message_tool.start_turn()   # 标识 agent 是否使用 messageTool 回复过了
 
-        history = session.get_history(max_messages=self.memory_window)
+        history = session.get_history(max_messages=self.memory_window)  # 加载用户的会话历史
         initial_messages = self.context.build_messages(
             history=history,
             current_message=msg.content,
